@@ -1,0 +1,19 @@
+# =============================================================================
+# Aspire Dashboard — Local OpenTelemetry Trace Viewer
+# =============================================================================
+# Start:  docker compose up -d
+# Stop:   docker compose down
+# UI:     http://localhost:18888
+# OTLP:   http://localhost:4317 (gRPC)
+# =============================================================================
+
+services:
+  aspire-dashboard:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:latest
+    container_name: aspire-dashboard
+    ports:
+      - "18888:18888"   # Dashboard UI
+      - "4317:18889"    # OTLP gRPC receiver
+    environment:
+      - ASPIRE_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS=true
+    restart: unless-stopped

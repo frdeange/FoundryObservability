@@ -1,0 +1,29 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
+{
+	"name": "Foundry Observability",
+	"image": "mcr.microsoft.com/devcontainers/python:3-3.13-bookworm",
+
+	"features": {
+		"ghcr.io/devcontainers/features/azure-cli:1": {},
+		// Docker-in-Docker: allows running docker compose inside the devcontainer
+		// (required for the Aspire Dashboard)
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+
+	// Forward Aspire Dashboard ports to the host browser
+	"forwardPorts": [18888, 4317],
+	"portsAttributes": {
+		"18888": { "label": "Aspire Dashboard UI", "onAutoForward": "notify" },
+		"4317":  { "label": "OTLP gRPC Endpoint",  "onAutoForward": "silent" }
+	},
+
+	// Install Python dependencies on container creation
+	"postCreateCommand": "pip install --upgrade pip && pip install -r requirements.txt",
+
+	// Auto-start Aspire Dashboard on every devcontainer start
+	"postStartCommand": "docker compose up -d"
+
+	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	// "remoteUser": "root"
+}

@@ -1,0 +1,8 @@
+python-dotenv
+opentelemetry-sdk
+azure-core-tracing-opentelemetry
+azure-monitor-opentelemetry
+opentelemetry-exporter-otlp
+azure-monitor-query
+aiohttp
+azure-identity==1.25.3
