@@ -74,7 +74,7 @@ async def main():
                     "name": "tool_call_accuracy",
                     "evaluator_name": "builtin.tool_call_accuracy",
                     "initialization_parameters": {"deployment_name": model},
-                    "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_items}}"},
+                    "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_items}}", "tool_definitions": "{{sample.tool_definitions}}"},
                 },
                 {
                     "type": "azure_ai_evaluator",
@@ -82,13 +82,6 @@ async def main():
                     "evaluator_name": "builtin.task_adherence",
                     "initialization_parameters": {"deployment_name": model},
                     "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_items}}"},
-                },
-                {
-                    "type": "azure_ai_evaluator",
-                    "name": "response_completeness",
-                    "evaluator_name": "builtin.response_completeness",
-                    "initialization_parameters": {"deployment_name": model},
-                    "data_mapping": {"query": "{{item.query}}", "response": "{{sample.output_text}}"},
                 },
             ]
 

@@ -87,6 +87,7 @@ with (
             "data_mapping": {
                 "query": "{{item.query}}",
                 "response": "{{sample.output_items}}",
+                "tool_definitions": "{{sample.tool_definitions}}",
             },
         },
         {
@@ -107,16 +108,6 @@ with (
             "data_mapping": {
                 "query": "{{item.query}}",
                 "response": "{{sample.output_items}}",
-            },
-        },
-        {
-            "type": "azure_ai_evaluator",
-            "name": "response_completeness",
-            "evaluator_name": "builtin.response_completeness",
-            "initialization_parameters": {"deployment_name": model},
-            "data_mapping": {
-                "query": "{{item.query}}",
-                "response": "{{sample.output_text}}",
             },
         },
     ]
