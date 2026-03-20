@@ -75,6 +75,17 @@ rule = project_client.evaluation_rules.create_or_update(
 
 Scheduled evaluations run **at regular intervals** — useful for regression testing against a known dataset or periodic red teaming.
 
+### Prerequisites for Scheduled Evaluations
+
+Scheduled evaluations run via the project's **Managed Identity**, which needs the `Azure AI User` role:
+
+1. Go to Azure Portal → Your AI Foundry project resource.
+2. Access Control (IAM) → Add role assignment.
+3. Search for "Azure AI User".
+4. Assign to the project's Managed Identity.
+
+> **If you see `ProjectMIUnauthorized`:** The MI is missing roles or the storage firewall is blocking. See [Troubleshooting](02-setup.md#10-troubleshooting-common-errors).
+
 ### How It Works
 
 ```mermaid
@@ -115,15 +126,6 @@ schedule_response = project_client.beta.schedules.create_or_update(
 ```
 
 → [Example 09: Scheduled Eval](../examples/09_eval_scheduled/)
-
-### Prerequisites for Scheduled Evaluations
-
-Scheduled evaluations run via the project's **Managed Identity**, which needs the `Azure AI User` role:
-
-1. Go to Azure Portal → Your AI Foundry project resource.
-2. Access Control (IAM) → Add role assignment.
-3. Search for "Azure AI User".
-4. Assign to the project's Managed Identity.
 
 ## Agent Monitoring Dashboard
 

@@ -12,7 +12,29 @@ Eval runs execute server-side using the **project's Managed Identity (MI)**. Bef
    - `Storage Blob Data Contributor` on the project's linked storage account.
 3. **Storage network access** allows the RAI service to reach the storage account. See [Storage Network Configuration](02-setup.md#storage-network-configuration-for-evaluations) for details.
 
-Without these, `evals.runs.create()` will fail with `ProjectMIUnauthorized` / `AuthorizationFailure`.
+You can verify and assign roles via CLI:
+
+```bash
+# 1. Get your project MI's principal ID
+PRINCIPAL_ID=$(az resource show \
+  --ids "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>" \
+  --query identity.principalId -o tsv)
+
+# 2. List current roles
+az role assignment list --assignee $PRINCIPAL_ID --all -o table
+
+# 3. Assign Cognitive Services User on the AI Services account
+az role assignment create --assignee $PRINCIPAL_ID \
+  --role "Cognitive Services User" \
+  --scope "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>"
+
+# 4. Assign Storage Blob Data Contributor on the storage account
+az role assignment create --assignee $PRINCIPAL_ID \
+  --role "Storage Blob Data Contributor" \
+  --scope "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Storage/storageAccounts/<storage>"
+```
+
+Without these, `evals.runs.create()` will fail with `ProjectMIUnauthorized` / `AuthorizationFailure`. See [Troubleshooting](02-setup.md#10-troubleshooting-common-errors) for details.
 
 ## How Evaluations Work
 
@@ -77,6 +99,15 @@ eval_object = openai_client.evals.create(
 ## Data Source Types
 
 When creating an **Eval Run**, you choose how to provide data:
+
+### Which Data Source Should I Use?
+
+| Data Source | Best for | You provide | Example |
+|-------------|----------|-------------|---------|
+| **Inline JSONL** | Quick tests, few items, CI pipelines | Query/response pairs in code | [Example 05](../examples/05_eval_inline_data/) |
+| **Agent as Target** | Testing a live agent end-to-end | Test queries only — the agent generates responses | [Example 06](../examples/06_eval_agent/) |
+| **From Traces** | Evaluating real production behavior | Trace IDs from Application Insights | [Example 07](../examples/07_eval_traces/) |
+| **Uploaded Dataset** | Large datasets, recurring evaluations | A JSONL file uploaded to the project | [Example 09](../examples/09_eval_scheduled/) |
 
 ### Inline JSONL (`jsonl` with `file_content`)
 
@@ -162,19 +193,24 @@ data_source = CreateEvalJSONLRunDataSourceParam(
 
 ## Data Mapping Syntax
 
-Data mapping connects your data fields to what the evaluator expects. The syntax uses `{{}}` templates:
+Data mapping connects your data fields to what the evaluator expects. The syntax uses `{{}}` templates and varies depending on the data source:
 
-| Pattern | Meaning |
-|---------|---------|
-| `{{item.query}}` | The `query` field from your input data item |
-| `{{item.response}}` | The `response` field from your input data item |
-| `{{item.context}}` | The `context` field from your input data item |
-| `{{item.ground_truth}}` | The `ground_truth` field from your input data item |
-| `{{sample.output_text}}` | The text output from the agent (when using agent target) |
-| `{{sample.output_items}}` | The structured JSON output from the agent, including tool calls |
-| `{{query}}` | Direct field mapping (used with trace data sources) |
-| `{{response}}` | Direct field mapping (used with trace data sources) |
-| `{{tool_definitions}}` | Tool definitions (used with trace data source evaluators) |
+| Pattern | Meaning | Used with |
+|---------|---------|----------|
+| `{{item.query}}` | The `query` field from your input data item | Inline JSONL, Agent target |
+| `{{item.response}}` | The `response` field from your input data item | Inline JSONL |
+| `{{item.context}}` | The `context` field from your input data item | Inline JSONL |
+| `{{item.ground_truth}}` | The `ground_truth` field from your input data item | Inline JSONL |
+| `{{sample.output_text}}` | The text output from the agent | Agent target |
+| `{{sample.output_items}}` | The structured JSON output including tool calls | Agent target |
+| `{{sample.tool_definitions}}` | Tool definitions available to the agent | Agent target |
+| `{{query}}` | Direct field mapping | Trace data source |
+| `{{response}}` | Direct field mapping | Trace data source |
+| `{{tool_definitions}}` | Tool definitions | Trace data source |
+
+> **Tip — Agent eval with tools:** If your agent uses tools and you want to evaluate tool usage, pass `{{sample.output_items}}` (not `{{sample.output_text}}`) as the `response`. For `tool_call_accuracy`, also include `"tool_definitions": "{{sample.tool_definitions}}"` in the data mapping.
+>
+> **Gotcha — Tool-call-only agents:** If your agent only makes tool calls without producing a final text response (e.g., mock tools with no execution), evaluators like `response_completeness` and `fluency` will fail because `{{sample.output_text}}` is empty. Use `task_adherence`, `intent_resolution`, and `tool_call_accuracy` instead.
 
 ## Testing Criteria
 

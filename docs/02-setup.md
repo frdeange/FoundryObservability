@@ -4,10 +4,12 @@
 
 1. Sign in to [Microsoft Foundry](https://ai.azure.com/).
 2. Create a new project or open an existing one.
-3. Note your **project endpoint** from the Overview page:
+3. Note your **project endpoint** from the Overview page (look for the "Endpoint" field at the top):
    ```
    https://<account_name>.services.ai.azure.com/api/projects/<project_name>
    ```
+
+> **Tip:** You can also find it via CLI: `az cognitiveservices account show --name <account> --resource-group <rg> --query properties.endpoint`
 
 ## 2. Deploy an AI Model
 
@@ -43,7 +45,7 @@ This installs:
 | `azure-monitor-opentelemetry` | Export to Application Insights |
 | `opentelemetry-exporter-otlp` | Export via OTLP (for Aspire Dashboard) |
 | `azure-monitor-query` | Query Application Insights logs (for trace-based evals) |
-| `aiohttp` | Async HTTP — required for async client |
+| `aiohttp` | Async HTTP — required for async examples only |
 
 ## 5. Configure Environment Variables
 
@@ -137,6 +139,44 @@ python examples/01_tracing_console/tracing_console.py
 ```
 
 If you see span output in the console, you're ready to go!
+
+## 10. Troubleshooting Common Errors
+
+These are the most common issues we've seen when running the examples:
+
+### `ProjectMIUnauthorized` / `AuthorizationFailure` on eval runs
+
+**Symptom:** `evals.create()` succeeds but `evals.runs.create()` fails with a 401/403 mentioning `ProjectMIUnauthorized` and component `raisvc`.
+
+**Root cause:** Eval runs execute server-side using the project's **Managed Identity (MI)**. The MI needs both RBAC roles AND network access to the storage account.
+
+**Fix — check in this order:**
+
+1. **Is the MI enabled?** Azure Portal → Your AI project → Identity → System assigned → Status: **On**.
+2. **Does the MI have the right roles?** Check with:
+   ```bash
+   # Get your project MI's principal ID
+   az resource show \
+     --ids "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.CognitiveServices/accounts/<account>/projects/<project>" \
+     --query identity.principalId -o tsv
+   
+   # List its roles
+   az role assignment list --assignee <principal-id> --all -o table
+   ```
+   You need at minimum: `Cognitive Services User` on the AI Services account, and `Storage Blob Data Contributor` on the storage account.
+3. **Is the storage firewall blocking?** This is the most common gotcha. See [Storage Network Configuration](#storage-network-configuration-for-evaluations) above.
+
+### `Log Analytics Reader` 403 when querying traces
+
+**Symptom:** Example 07 (eval_traces) fails to query Application Insights.
+
+**Fix:** Your user identity needs the `Log Analytics Reader` role on the Application Insights resource. Assign it in Azure Portal → Application Insights → Access Control (IAM).
+
+### `AGENT_ID` empty — no traces found
+
+**Symptom:** Example 07 (eval_traces) prints "No trace IDs found".
+
+**Fix:** Set `AGENT_ID` in your `.env` to the agent ID you used when running tracing examples (e.g., `ObservabilityDemoAgent:1`). You can discover available agent IDs by querying App Insights — see the example's docstring for the Kusto query.
 
 ---
 

@@ -33,6 +33,16 @@ This hooks into the SDK and automatically creates spans for:
 
 You need an exporter to actually **see** the traces. Here are the three options, from simplest to production-ready:
 
+| | Console | Aspire Dashboard | Azure Monitor |
+|--|---------|------------------|---------------|
+| **Setup** | None | Docker container | App Insights connection |
+| **UI** | stdout text | Full trace explorer | Foundry Portal + App Insights |
+| **Queryable** | No | No (local only) | Yes (Kusto/KQL) |
+| **Persisted** | No (gone on exit) | Session only | 90 days (configurable) |
+| **Production-ready** | No | No | Yes |
+| **Cost** | Free | Free | Azure Monitor pricing |
+| **Best for** | Quick debugging | Local development | Production + trace-based evals |
+
 ### Option A: Console (fastest for debugging)
 
 Prints spans to stdout. No infrastructure needed.
@@ -90,7 +100,21 @@ By default, traces capture **metadata only** (model name, token counts, latency)
 export OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=true
 ```
 
+What changes when enabled:
+
+| | Content Recording OFF (default) | Content Recording ON |
+|--|---|-|
+| System prompts | Not captured | Full text in span events |
+| User messages | Not captured | Full text in span events |
+| Assistant responses | Not captured | Full text in span events |
+| Tool call arguments | Not captured | JSON arguments in span events |
+| Tool call results | Not captured | JSON results in span events |
+| Token counts | Always captured | Always captured |
+| Model name/latency | Always captured | Always captured |
+
 > **Warning:** Message content may contain sensitive user data. Only enable this in development or when you understand the privacy implications.
+>
+> **Note:** This flag only affects the **automatic SDK instrumentation**. Custom function tracing via `@trace_function` always captures parameters and return values regardless of this setting.
 
 ## Creating Custom Spans
 

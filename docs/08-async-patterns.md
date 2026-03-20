@@ -73,11 +73,17 @@ async def main():
         # Run multiple evaluations concurrently
         queries = ["What is AI?", "Explain quantum computing", "How does Python work?"]
         results = await asyncio.gather(
-            *[evaluate_query(openai_client, eval_id, q) for q in queries]
+            *[evaluate_query(openai_client, eval_id, q) for q in queries],
+            return_exceptions=True,  # Don't let one failure cancel everything
         )
-        for result in results:
-            print(f"Run {result.id}: {result.status}")
+        for i, result in enumerate(results):
+            if isinstance(result, Exception):
+                print(f"Query {i} failed: {result}")
+            else:
+                print(f"Run {result.id}: {result.status}")
 ```
+
+> **Always use `return_exceptions=True`** with `asyncio.gather()` when running independent operations. Without it, a single failure raises immediately and cancels all other tasks.
 
 ## Pros and Cons
 
@@ -150,6 +156,15 @@ async def main():
 4. Add `await` before every SDK method call
 5. Wrap the entry point in `asyncio.run(main())`
 6. Ensure `aiohttp` is installed
+
+### Common Pitfalls
+
+| Pitfall | What happens | Fix |
+|---------|-------------|-----|
+| Forgetting `await` | Returns a coroutine object instead of the result | Add `await` before every SDK call |
+| Mixing sync/async clients | `TypeError` or unexpected blocking | Use `from azure.ai.projects.aio` consistently |
+| Blocking call in async | Entire event loop freezes | Move blocking work to `asyncio.to_thread()` |
+| `gather()` without `return_exceptions` | One failure cancels all tasks | Add `return_exceptions=True` |
 
 ---
 

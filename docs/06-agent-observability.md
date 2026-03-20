@@ -83,6 +83,25 @@ Beyond general quality/safety evaluators, Foundry provides evaluators designed s
 | `builtin.response_completeness` | Does the response cover all aspects of the query? |
 | `builtin.navigation_efficiency` | Did the agent take an efficient path to the answer? |
 
+### Understanding Data Mapping for Agents
+
+The `{{}}` templates in data mapping vary depending on your data source. Here's the key:
+
+| Prefix | Source | Example | When to use |
+|--------|--------|---------|-------------|
+| `{{item.X}}` | Your input data schema | `{{item.query}}` | Always — maps your test queries |
+| `{{sample.X}}` | Agent execution output | `{{sample.output_items}}` | Agent target — the agent's actual response |
+| `{{X}}` | Trace fields (direct) | `{{query}}`, `{{response}}` | Trace data source only |
+
+Key `{{sample.*}}` fields:
+
+| Field | Contains | Use for |
+|-------|----------|--------|
+| `sample.output_text` | Final text response only | Evaluators that only need text (fluency, coherence) |
+| `sample.output_items` | Full structured output with tool calls | Tool evaluators + task evaluators |
+| `sample.tool_calls` | Just the tool call entries | Specific tool analysis |
+| `sample.tool_definitions` | Available tool definitions | **Required by** `tool_call_accuracy` |
+
 ### Using Agent Evaluators
 
 When evaluating an agent, use `{{sample.output_items}}` to pass the **structured output** (including tool calls) to evaluators that need it:
@@ -111,6 +130,19 @@ testing_criteria = [
     },
 ]
 ```
+
+> **Gotcha — `tool_call_accuracy` needs `tool_definitions`:** If you see `"Tool definitions input is required but not provided"`, add `"tool_definitions": "{{sample.tool_definitions}}"` to the data mapping.
+>
+> **Gotcha — Tool-call-only agents:** If your agent only makes tool calls (no final text response), `sample.output_text` will be empty. Evaluators like `response_completeness` and `fluency` will fail. Use `task_adherence`, `intent_resolution`, and `tool_call_accuracy` instead.
+
+### Which Evaluators for My Agent?
+
+| Agent type | Recommended evaluators |
+|------------|------------------------|
+| **Simple text Q&A** (no tools) | `coherence` + `fluency` + `task_adherence` |
+| **Agent with tools** | `tool_call_accuracy` + `task_adherence` + `intent_resolution` |
+| **Agent with tools + text response** | All of the above + `response_completeness` |
+| **Safety-critical agent** | Add `violence` + `hate_unfairness` to any of the above |
 
 → [Example 11: Agent Evaluation](../examples/11_agent_evaluation/)
 

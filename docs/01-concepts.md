@@ -72,18 +72,17 @@ sequenceDiagram
 
 Microsoft, in collaboration with Cisco Outshift, has introduced semantic conventions for multi-agent systems, built on [OpenTelemetry GenAI conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/gen-ai-agent-spans/) and [W3C Trace Context](https://www.w3.org/TR/trace-context/).
 
-| Type | Name | Purpose |
-|------|------|---------|
-| Span | `execute_task` | Task planning and event propagation |
-| Child Span | `agent_to_agent_interaction` | Communication between agents |
-| Child Span | `agent.state.management` | Context and memory management |
-| Child Span | `agent_planning` | Internal planning steps |
-| Child Span | `agent_orchestration` | Agent-to-agent orchestration |
-| Attribute | `tool_definitions` | Tool purpose and configuration |
-| Attribute | `llm_spans` | Model call spans |
-| Attribute | `tool.call.arguments` | Arguments passed to tool invocations |
-| Attribute | `tool.call.results` | Results returned by tools |
-| Event | `Evaluation` | Agent performance evaluation results |
+You don't need to set these manually — the SDK handles most of them automatically. The key ones to know:
+
+| Type | Name | What it does | Automatic? |
+|------|------|-------------|------------|
+| Span | `execute_task` | Top-level task execution | ✅ Yes |
+| Child Span | `agent_to_agent_interaction` | Communication between agents | ✅ Yes (multi-agent) |
+| Attribute | `gen_ai.agent.id` | Agent identifier | ✅ Yes (with `agent_reference`) |
+| Attribute | `tool.call.arguments` | Arguments passed to tools | ✅ Yes |
+| Attribute | `tool.call.results` | Results returned by tools | ✅ Yes |
+| Attribute | `gen_ai.usage.input_tokens` | Input token count | ✅ Yes |
+| Event | `Evaluation` | Evaluation results | ✅ Yes (continuous eval) |
 
 These conventions are integrated into Foundry, Semantic Kernel, LangChain, LangGraph, and the OpenAI Agents SDK.
 
@@ -91,10 +90,10 @@ These conventions are integrated into Foundry, Semantic Kernel, LangChain, LangG
 
 Tracing can capture sensitive information. Follow these practices:
 
-- **Never** store secrets, credentials, or tokens in prompts, tool arguments, or span attributes.
-- **Redact** personal data and sensitive content before it enters telemetry.
-- **Treat** trace data as production telemetry — apply the same access controls and retention policies you use for logs and metrics.
-- Content recording (`OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT`) is **off by default**. Only enable it when you understand the implications.
+- **Content recording is off by default** — `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT` is `false`. When off, traces only include metadata (model name, token counts, latency). Turn it on only in development.
+- **Watch for secrets in tool arguments** — If your tools receive API keys, connection strings, or tokens as parameters, these will appear in traces when content recording is on.
+- **`@trace_function` always captures parameters** — Unlike SDK instrumentation, the `trace_function` decorator records function arguments and return values regardless of the content recording flag. Don't decorate functions that handle secrets.
+- **Treat traces like logs** — Apply the same access controls and retention policies. Use the `Log Analytics Reader` role to restrict who can query traces in Application Insights.
 
 ---
 
