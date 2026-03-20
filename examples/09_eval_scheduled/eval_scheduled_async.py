@@ -111,11 +111,7 @@ async def main():
             async for run in schedule_runs:
                 pprint(run)
 
-            # Cleanup
-            await project_client.beta.schedules.delete(schedule_response.schedule_id)
-            await client.evals.delete(eval_id=eval_object.id)
-            await project_client.datasets.delete(name=dataset.name, version=dataset.version)
-            print("Cleanup complete")
+
 
 
 asyncio.run(main())

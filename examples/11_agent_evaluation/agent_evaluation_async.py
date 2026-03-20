@@ -140,9 +140,7 @@ async def main():
                     output_items.append(item)
                 pprint(output_items)
 
-            await openai_client.evals.delete(eval_id=eval_object.id)
-            await project_client.agents.delete(agent_name=agent.name)
-            print("Cleanup complete")
+
 
 
 asyncio.run(main())

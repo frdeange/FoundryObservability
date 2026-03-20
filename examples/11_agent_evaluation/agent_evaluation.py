@@ -181,7 +181,4 @@ with (
     else:
         print(f"\nEvaluation {eval_run.status}")
 
-    # --- Cleanup ---
-    openai_client.evals.delete(eval_id=eval_object.id)
-    project_client.agents.delete(agent_name=agent.name)
-    print("\nCleanup complete")
+

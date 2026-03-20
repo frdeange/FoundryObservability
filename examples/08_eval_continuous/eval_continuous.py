@@ -123,11 +123,4 @@ with (
             break
         print(f"  Attempt {attempt + 1}/10 — no runs yet...")
 
-    # --- Cleanup ---
-    project_client.evaluation_rules.delete(id=rule.id)
-    print("\nContinuous eval rule deleted")
-    openai_client.evals.delete(eval_id=eval_object.id)
-    print("Evaluation deleted")
-    openai_client.conversations.delete(conversation_id=conversation.id)
-    project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
-    print("Agent and conversation deleted")
+

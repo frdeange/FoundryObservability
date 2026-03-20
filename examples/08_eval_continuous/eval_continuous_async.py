@@ -91,12 +91,7 @@ async def main():
                     break
                 print(f"  Attempt {attempt + 1}/10...")
 
-            # Cleanup
-            await project_client.evaluation_rules.delete(id=rule.id)
-            await openai_client.evals.delete(eval_id=eval_object.id)
-            await openai_client.conversations.delete(conversation_id=conversation.id)
-            await project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
-            print("Cleanup complete")
+
 
 
 asyncio.run(main())

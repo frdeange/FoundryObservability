@@ -139,8 +139,7 @@ def main():
             pprint(output_items)
             print(f"\nReport URL: {run.report_url}")
 
-        client.evals.delete(eval_id=eval_object.id)
-        print("Evaluation deleted")
+
 
 
 if __name__ == "__main__":

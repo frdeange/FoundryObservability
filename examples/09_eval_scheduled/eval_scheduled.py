@@ -139,10 +139,4 @@ with (
     for run in schedule_runs:
         pprint(run)
 
-    # --- Cleanup ---
-    project_client.beta.schedules.delete(schedule_response.schedule_id)
-    print("\nSchedule deleted")
-    client.evals.delete(eval_id=eval_object.id)
-    print("Evaluation deleted")
-    project_client.datasets.delete(name=dataset.name, version=dataset.version)
-    print("Dataset deleted")
+

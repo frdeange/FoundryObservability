@@ -56,12 +56,12 @@ AIProjectInstrumentor().instrument()
 
 
 # --- Custom functions with @trace_function decorator ---
-@trace_function
+@trace_function()
 def enrich_query(query: str, context: str) -> str:
     return f"[Context: {context}] {query}"
 
 
-@trace_function
+@trace_function()
 def format_response(response_text: str, format_type: str = "plain") -> dict:
     return {
         "text": response_text,

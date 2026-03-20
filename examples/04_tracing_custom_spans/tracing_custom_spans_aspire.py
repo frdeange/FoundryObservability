@@ -1,18 +1,25 @@
 """
-Example 04 — Custom Spans, Attributes, and trace_function (Sync)
+Example 04b — Custom Spans with Aspire Dashboard
 
-Demonstrates:
-  - Custom span processors that add attributes to every span
-  - The @trace_function decorator for tracing your own functions
-  - Manual span creation with tracer.start_as_current_span()
+Same custom spans, attributes, and @trace_function as 04,
+but traces are sent to the Aspire Dashboard for visual exploration.
+
+Prerequisites:
+    docker compose up -d   (or the devcontainer auto-starts it)
 
 Usage:
-    python examples/04_tracing_custom_spans/tracing_custom_spans.py
+    python examples/04_tracing_custom_spans/tracing_custom_spans_aspire.py
+
+Then open http://localhost:18888 → Traces tab to see:
+  - Custom attributes (app.session_id, app.environment, app.version) on every span
+  - @trace_function spans (enrich_query, format_response) with parameters captured
+  - Manual spans (process_user_request, process_agent_response) grouping operations
 
 Environment variables:
     AZURE_AI_PROJECT_ENDPOINT          — Your Foundry project endpoint
     AZURE_AI_MODEL_DEPLOYMENT_NAME     — Model deployment name
     AZURE_EXPERIMENTAL_ENABLE_GENAI_TRACING=true
+    OTEL_EXPORTER_OTLP_ENDPOINT        — OTLP endpoint (default: http://localhost:4317)
 """
 
 import os
@@ -22,23 +29,55 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- OpenTelemetry setup ---
+# --- OpenTelemetry setup: OTLP exporter to Aspire Dashboard ---
 from azure.core.settings import settings
 
 settings.tracing_implementation = "opentelemetry"
 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider, SpanProcessor, ReadableSpan, Span
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor, ConsoleSpanExporter
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+otlp_endpoint = os.environ.get("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 
 
-# --- Custom span processor: adds attributes to every span ---
+# --- Helper: get the real logged-in user from the Azure credential ---
+def get_current_user_info() -> dict:
+    """Extract real user info from the Azure CLI token (jwt claims)."""
+    import json
+    import base64
+    from azure.identity import DefaultAzureCredential as SyncCred
+
+    with SyncCred() as cred:
+        token = cred.get_token("https://management.azure.com/.default")
+    # Decode JWT payload (second segment) without verification — we just need the claims
+    payload = token.token.split(".")[1]
+    payload += "=" * (-len(payload) % 4)  # Fix base64 padding
+    claims = json.loads(base64.urlsafe_b64decode(payload))
+    return {
+        "email": claims.get("upn") or claims.get("unique_name") or claims.get("email", "unknown"),
+        "name": claims.get("name", "unknown"),
+        "oid": claims.get("oid", "unknown"),       # User object ID
+        "tid": claims.get("tid", "unknown"),        # Tenant ID
+    }
+
+
+# Get the REAL current user
+user_info = get_current_user_info()
+print(f"Detected user: {user_info['name']} ({user_info['email']})\n")
+
+
+# --- Custom span processor: adds REAL user info to every span ---
 class CustomAttributeSpanProcessor(SpanProcessor):
-    """Adds application-level metadata to every span."""
+    """Adds real user identity and app metadata to every span."""
 
     def on_start(self, span: Span, parent_context=None):
-        # Add to all spans
-        span.set_attribute("app.session_id", "demo-session-001")
+        span.set_attribute("app.user.email", user_info["email"])
+        span.set_attribute("app.user.name", user_info["name"])
+        span.set_attribute("app.user.id", user_info["oid"])
+        span.set_attribute("app.tenant.id", user_info["tid"])
         span.set_attribute("app.environment", "development")
         span.set_attribute("app.version", "1.0.0")
 
@@ -46,9 +85,11 @@ class CustomAttributeSpanProcessor(SpanProcessor):
         pass
 
 
-# Set up tracing with console exporter + custom processor
-tracer_provider = TracerProvider()
-tracer_provider.add_span_processor(SimpleSpanProcessor(ConsoleSpanExporter()))
+# Set up tracing with OTLP exporter + custom processor
+resource = Resource.create({"service.name": "custom-spans-demo"})
+otlp_exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
+tracer_provider = TracerProvider(resource=resource)
+tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
 trace.set_tracer_provider(tracer_provider)
 
 # Register the custom processor
@@ -60,7 +101,7 @@ from azure.ai.projects.telemetry import AIProjectInstrumentor, trace_function
 
 AIProjectInstrumentor().instrument()
 
-# --- Custom functions with @trace_function decorator ---
+# --- Custom functions with @trace_function() decorator ---
 
 
 @trace_function()
@@ -86,7 +127,10 @@ from azure.ai.projects.models import PromptAgentDefinition
 
 tracer = trace.get_tracer(__name__)
 
-with tracer.start_as_current_span("custom_spans_demo"):
+print(f"Sending traces to Aspire Dashboard at {otlp_endpoint}")
+print("Open http://localhost:18888 to view traces\n")
+
+with tracer.start_as_current_span("custom_spans_aspire_demo"):
     with (
         DefaultAzureCredential() as credential,
         AIProjectClient(
@@ -96,7 +140,7 @@ with tracer.start_as_current_span("custom_spans_demo"):
         project_client.get_openai_client() as openai_client,
     ):
         agent = project_client.agents.create_version(
-            agent_name="CustomSpansDemo",
+            agent_name="CustomSpansAspireDemo",
             definition=PromptAgentDefinition(
                 model=os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
                 instructions="You are a helpful assistant. Keep answers brief.",
@@ -128,6 +172,9 @@ with tracer.start_as_current_span("custom_spans_demo"):
         project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
         print("Cleanup complete")
 
-print("\nCheck the console output above for spans with custom attributes:")
+tracer_provider.force_flush()
+print("\nTraces sent! Check Aspire Dashboard at http://localhost:18888")
+print("Look for trace 'custom_spans_aspire_demo' and explore:")
 print("  - app.session_id, app.environment, app.version on every span")
-print("  - code.function.parameter.* and code.function.return.value on @trace_function spans")
+print("  - enrich_query and format_response spans with code.function.parameter.* attributes")
+print("  - process_user_request and process_agent_response grouping spans")

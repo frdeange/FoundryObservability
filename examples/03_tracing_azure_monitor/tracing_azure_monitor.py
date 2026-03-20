@@ -76,10 +76,13 @@ with (
             openai_client.conversations.delete(conversation_id=conversation.id)
             print("Conversation deleted")
 
-    # Cleanup
-    if agent:
-        project_client.agents.delete_version(agent_name=agent.name, agent_version=agent.version)
-        print("Agent deleted")
+    # NOTE: Agent is intentionally NOT deleted so you can see traces
+    # associated with it in the Foundry portal.
+    # To clean up manually later:
+    #   project_client.agents.delete_version(agent_name="TracingAzureMonitorDemo", agent_version="1")
 
-print("\nTraces sent to Azure Monitor!")
-print("View them in: Foundry portal → Your project → Agents → Traces tab")
+print(f"\nTraces sent to Azure Monitor!")
+print(f"Agent kept alive: {agent.name} (id: {agent.id})")
+print(f"\nView traces in (allow 2-5 min for ingestion):")
+print(f"  1. Foundry portal → Your project → Agents → Traces tab")
+print(f"  2. Azure portal → Application Insights → Transaction search")

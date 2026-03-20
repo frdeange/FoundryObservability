@@ -97,10 +97,31 @@ The SDK uses `DefaultAzureCredential`, which picks up your Azure CLI credentials
 | Role | When needed | Where to assign |
 |------|-------------|-----------------|
 | `Log Analytics Reader` | Querying traces in Application Insights | Application Insights resource |
+| `Cognitive Services User` | Eval runs (project MI calls RAI/content-safety service) | AI Services account |
+| `Storage Blob Data Contributor` | Eval runs (project MI reads/writes eval data) | Project storage account |
 | `Azure AI User` | Scheduled evaluations (managed identity) | Foundry project resource |
 | `Contributor` or `Owner` | Creating/managing resources | Resource group level |
 
 Assign roles via: Azure portal → Resource → Access Control (IAM) → Add role assignment.
+
+### Storage Network Configuration for Evaluations
+
+Eval runs use the project's Managed Identity to access the linked storage account via the Responsible AI (RAI) backend service. If your storage account has a firewall enabled:
+
+- **`publicNetworkAccess: Disabled`** → Eval runs will fail with `AuthorizationFailure`. The RAI service cannot reach storage through private endpoints alone unless explicitly configured.
+- **`publicNetworkAccess: Enabled` + `defaultAction: Allow`** → Works. Security is maintained via `allowSharedKeyAccess: false` (Entra ID + RBAC only).
+- **`publicNetworkAccess: Enabled` + `defaultAction: Deny`** → May fail because the RAI service accesses storage through a delegated identity path that is not covered by the `bypass: AzureServices` exception or resource instance rules.
+
+Recommended configuration for the project's linked storage account:
+
+```bash
+az storage account update \
+  --name <storage-account-name> \
+  --resource-group <resource-group> \
+  --public-network-access Enabled \
+  --default-action Allow \
+  --allow-shared-key-access false
+```
 
 ## 9. Verify Everything Works
 

@@ -113,8 +113,7 @@ async def main():
             if run.status == "completed":
                 print(f"Evaluation completed! Report: {run.report_url}")
 
-            await client.evals.delete(eval_id=eval_object.id)
-            print("Evaluation deleted")
+
 
 
 asyncio.run(main())

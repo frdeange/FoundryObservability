@@ -155,6 +155,4 @@ with (
     else:
         print(f"\nEvaluation {run.status}")
 
-    # --- Cleanup ---
-    client.evals.delete(eval_id=eval_object.id)
-    print("\nEvaluation deleted")
+

@@ -111,7 +111,7 @@ The `trace_function` decorator automatically traces function parameters and retu
 ```python
 from azure.ai.projects.telemetry import trace_function
 
-@trace_function
+@trace_function()
 def get_weather(city: str) -> str:
     return f"Weather in {city}: sunny, 25°C"
 ```

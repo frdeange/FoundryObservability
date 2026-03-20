@@ -2,6 +2,18 @@
 
 Evaluation in Azure AI Foundry provides **quantitative, AI-assisted quality and safety metrics** to assess LLM models, GenAI applications, and agents.
 
+## Prerequisites
+
+Eval runs execute server-side using the **project's Managed Identity (MI)**. Before running evaluations, ensure:
+
+1. **System-assigned MI is enabled** on the AI Foundry project (Azure Portal → Project → Identity → Status: On).
+2. **RBAC roles** are assigned to the project MI:
+   - `Cognitive Services User` on the AI Services account (for RAI/content-safety evaluators).
+   - `Storage Blob Data Contributor` on the project's linked storage account.
+3. **Storage network access** allows the RAI service to reach the storage account. See [Storage Network Configuration](02-setup.md#storage-network-configuration-for-evaluations) for details.
+
+Without these, `evals.runs.create()` will fail with `ProjectMIUnauthorized` / `AuthorizationFailure`.
+
 ## How Evaluations Work
 
 The evaluation flow has three steps:
@@ -237,14 +249,6 @@ insight = project_client.beta.insights.create(
     eval_ids=[eval_object.id],
     insight_type="cluster",
 )
-```
-
-## Cleanup
-
-Always clean up evaluation resources when done:
-
-```python
-openai_client.evals.delete(eval_id=eval_object.id)
 ```
 
 ---
